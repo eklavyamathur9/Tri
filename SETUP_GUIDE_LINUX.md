@@ -17,11 +17,13 @@ Complete step-by-step guide to set up Tri on Linux for voice-controlled laptop a
 | `xclip` / `wl-clipboard` | Clipboard copy/paste | `sudo apt install xclip wl-clipboard` |
 | `xdotool` / `ydotool` / `wtype` | Key simulation for media/shortcuts | `sudo apt install xdotool ydotool` |
 | `playerctl` | Media player control (MPRIS) | `sudo apt install playerctl` |
-| `grim`/`slurp` (Wayland) or `scrot`/`maim` (X11) | Screenshots | `sudo apt install grim slurp` or `sudo apt install scrot maim` |
+| `flameshot` / `grim` / `scrot` | Screenshots (flameshot recommended for GNOME Wayland) | `sudo apt install flameshot` or `sudo apt install grim scrot` |
 | `spd-say`/`espeak-ng`/`festival` | Text-to-speech | `sudo apt install speech-dispatcher-espeak-ng espeak-ng` |
+| `notify-send` (`libnotify-bin`) | Desktop notifications | `sudo apt install libnotify-bin` |
+| `bluetoothctl` (`bluez`) | Bluetooth device management | `sudo apt install bluez` |
 | `upower` | Battery status | `sudo apt install upower` |
-| `wpctl`/`pactl`/`amixer` | Volume control | Usually available with PipeWire/PulseAudio |
-| `loginctl`/`xdg-screensaver` | Lock screen | Usually pre-installed |
+| `wpctl`/`pactl`/`amixer` | Volume and mic mute control | Usually available with PipeWire/PulseAudio |
+| `loginctl`/`xdg-screensaver` | Lock screen / sleep | Usually pre-installed |
 
 Run the dependency checker:
 ```bash

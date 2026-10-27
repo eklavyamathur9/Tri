@@ -7,9 +7,9 @@ for cmd in node npm cloudflared xdg-open curl; do
 done
 echo ""
 echo "Recommended (for full functionality):"
-for cmd in xclip wl-copy xdotool ydotool playerctl grim slurp scrot maim gnome-screenshot \
+for cmd in xclip wl-copy xdotool ydotool playerctl flameshot grim slurp scrot maim gnome-screenshot \
            spd-say espeak-ng festival notify-send upower wpctl pactl amixer \
-           loginctl xdg-screensaver wmctrl; do
+           bluetoothctl loginctl xdg-screensaver wmctrl; do
     if command -v $cmd &> /dev/null; then echo "  [OK] $cmd"; else echo "  [--] $cmd (optional)"; fi
 done
 echo ""
