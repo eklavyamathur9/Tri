@@ -66,7 +66,52 @@ export const linuxPlatform = {
         } catch {}
       }
     }
+    const desktopCmd = linuxPlatform.findDesktopApp?.(key);
+    if (desktopCmd) {
+      const parts = desktopCmd.split(/\s+/);
+      return run(parts[0], [...parts.slice(1), ...args]);
+    }
     return run(app, args);
+  },
+
+  _desktopApps: null,
+  _desktopAppsAt: 0,
+  findDesktopApp: (query) => {
+    const q = String(query || '').toLowerCase().trim();
+    if (!q) return null;
+    const now = Date.now();
+    if (!linuxPlatform._desktopApps || now - linuxPlatform._desktopAppsAt > 300_000) {
+      const dirs = ['/usr/share/applications', path.join(os.homedir(), '.local/share/applications')];
+      const map = new Map();
+      for (const d of dirs) {
+        if (!fs.existsSync(d)) continue;
+        try {
+          for (const f of fs.readdirSync(d)) {
+            if (!f.endsWith('.desktop')) continue;
+            try {
+              const c = fs.readFileSync(path.join(d, f), 'utf8');
+              if (/^NoDisplay=true/m.test(c)) continue;
+              const nameMatch = c.match(/^Name=(.+)$/m);
+              const execMatch = c.match(/^Exec=(.+)$/m);
+              if (nameMatch && execMatch) {
+                const name = nameMatch[1].trim().toLowerCase();
+                const cmd = execMatch[1].trim().replace(/%[a-zA-Z]/g, '').trim();
+                map.set(name, cmd);
+                map.set(f.replace(/\.desktop$/, '').toLowerCase(), cmd);
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+      linuxPlatform._desktopApps = map;
+      linuxPlatform._desktopAppsAt = now;
+    }
+
+    if (linuxPlatform._desktopApps.has(q)) return linuxPlatform._desktopApps.get(q);
+    for (const [name, cmd] of linuxPlatform._desktopApps.entries()) {
+      if (name.includes(q) || q.includes(name)) return cmd;
+    }
+    return null;
   },
   
   // Text to speech
@@ -325,6 +370,103 @@ export const linuxPlatform = {
     } catch {
       return false;
     }
+  },
+
+  // Laptop sleep / suspend
+  suspend: async () => {
+    try {
+      const ok = await run('systemctl', ['suspend']);
+      if (ok) return true;
+    } catch {}
+    try {
+      return await run('loginctl', ['suspend']);
+    } catch {
+      return false;
+    }
+  },
+
+  // Microphone privacy mute toggle
+  toggleMic: async (action) => {
+    try {
+      if (action === 'mute') {
+        await exec('wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', '1']);
+        return { ok: true, muted: true };
+      }
+      if (action === 'unmute') {
+        await exec('wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', '0']);
+        return { ok: true, muted: false };
+      }
+      await exec('wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', 'toggle']);
+      const out = await exec('wpctl', ['get-volume', '@DEFAULT_AUDIO_SOURCE@']);
+      return { ok: true, muted: out.includes('[MUTED]') };
+    } catch {
+      return { ok: false };
+    }
+  },
+
+  // Bluetooth control
+  bluetooth: {
+    status: async () => {
+      try {
+        const show = await exec('bluetoothctl', ['show']);
+        const powered = show.includes('Powered: yes');
+        const devsRaw = await exec('bluetoothctl', ['devices']);
+        const devs = devsRaw.split('\n').filter(Boolean).map((l) => {
+          const m = l.match(/^Device\s+([0-9A-F:]+)\s+(.+)$/i);
+          return m ? { mac: m[1], name: m[2] } : null;
+        }).filter(Boolean);
+        return { powered, devices: devs };
+      } catch {
+        return { powered: false, devices: [] };
+      }
+    },
+    power: async (on) => {
+      try {
+        await exec('bluetoothctl', ['power', on ? 'on' : 'off']);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    connect: async (target) => {
+      try {
+        const devsRaw = await exec('bluetoothctl', ['devices']);
+        const q = String(target || '').toLowerCase().trim();
+        for (const l of devsRaw.split('\n')) {
+          const m = l.match(/^Device\s+([0-9A-F:]+)\s+(.+)$/i);
+          if (m) {
+            const [_, mac, name] = m;
+            if (mac.toLowerCase() === q || name.toLowerCase().includes(q)) {
+              const out = await exec('bluetoothctl', ['connect', mac]);
+              const ok = out.toLowerCase().includes('successful') || !out.toLowerCase().includes('failed');
+              return { ok, name, mac, out };
+            }
+          }
+        }
+        return { ok: false, error: 'Device not found among paired devices' };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    },
+    disconnect: async (target) => {
+      try {
+        const devsRaw = await exec('bluetoothctl', ['devices']);
+        const q = String(target || '').toLowerCase().trim();
+        for (const l of devsRaw.split('\n')) {
+          const m = l.match(/^Device\s+([0-9A-F:]+)\s+(.+)$/i);
+          if (m) {
+            const [_, mac, name] = m;
+            if (!q || mac.toLowerCase() === q || name.toLowerCase().includes(q)) {
+              await exec('bluetoothctl', ['disconnect', mac]);
+              return { ok: true, name, mac };
+            }
+          }
+        }
+        return { ok: false, error: 'Device not found' };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    },
   }
 };
 

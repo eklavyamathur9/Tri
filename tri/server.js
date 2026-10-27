@@ -36,8 +36,11 @@ const OWNER_HASHES = new Set(OWNER ? (() => {
   return forms.flatMap((f) => ['sha256', 'sha1', 'md5'].map((a) => crypto.createHash(a).update(f).digest('hex')));
 })() : []);
 let lastCaller = '';
-const NOTES = path.join(os.homedir(), 'Documents', 'Tri Notes.md');
-const CLIPS = path.join(os.homedir(), 'Documents', 'Tri Clips.md');
+const VAULT = process.env.OBSIDIAN_VAULT && fs.existsSync(process.env.OBSIDIAN_VAULT)
+  ? process.env.OBSIDIAN_VAULT
+  : path.join(os.homedir(), 'Documents');
+const NOTES = path.join(VAULT, 'Tri Notes.md');
+const CLIPS = path.join(VAULT, 'Tri Clips.md');
 
 const activity = [];
 const recent = new Map();
@@ -176,8 +179,15 @@ const ACTIONS = {
     const q = norm(input);
     const app = APPS[q];
     if (!app) {
+      if (platform.findDesktopApp) {
+        const desktopApp = platform.findDesktopApp(q);
+        if (desktopApp) {
+          const ok = await platform.runApp(q);
+          return ok ? `Opened ${q}.` : `I tried to open ${q} but it did not start.`;
+        }
+      }
       if (SITES[q]) return ACTIONS.open_website({ input: q });
-      return `I can't open ${q || 'that'}. I can open notepad, calculator, chrome, VS Code, file explorer, downloads, paint, camera, settings, task manager, Word, Excel or PowerPoint.`;
+      return `I can't open ${q || 'that'}. I can open any installed app or document on your laptop.`;
     }
     const ok = await run(app[0], app[1]);
     return ok ? `Opened ${q}.` : `I tried to open ${q} but it did not start.`;
@@ -472,6 +482,56 @@ const ACTIONS = {
     }
     return 'Your saved clipboard snippets are open on the screen.';
   },
+
+  // ----- microphone privacy mute toggle -----
+  async mute_mic({ input }) {
+    const q = norm(input);
+    const action = q.includes('unmute') || q === 'off' ? 'unmute' : q.includes('mute') || q === 'on' ? 'mute' : 'toggle';
+    if (!platform.toggleMic) return 'Microphone control is not supported on this device.';
+    const res = await platform.toggleMic(action);
+    if (!res.ok) return 'I could not adjust the microphone.';
+    return res.muted ? 'Microphone is now muted.' : 'Microphone is now unmuted and listening.';
+  },
+
+  // ----- bluetooth device management -----
+  async bluetooth_control({ input }) {
+    const q = norm(input);
+    if (!platform.bluetooth) return 'Bluetooth control is not supported on this device.';
+    if (q.includes('on') || q.includes('enable')) {
+      await platform.bluetooth.power(true);
+      return 'Bluetooth turned on.';
+    }
+    if (q.includes('off') || q.includes('disable')) {
+      await platform.bluetooth.power(false);
+      return 'Bluetooth turned off.';
+    }
+    if (q.includes('disconnect')) {
+      const target = q.replace(/^(disconnect|unpair)\s*(from\s*)?/i, '').trim();
+      const res = await platform.bluetooth.disconnect(target);
+      return res.ok ? `Disconnected from ${res.name || 'device'}.` : 'No connected Bluetooth device found to disconnect.';
+    }
+    if (q.includes('connect')) {
+      const target = q.replace(/^(connect|pair)\s*(to\s*)?/i, '').trim();
+      const res = await platform.bluetooth.connect(target);
+      return res.ok ? `Connected to ${res.name}.` : `Could not connect: ${res.error || 'device unavailable'}.`;
+    }
+    // Default: status
+    const st = await platform.bluetooth.status();
+    if (!st.powered) return 'Bluetooth is currently turned off.';
+    if (!st.devices.length) return 'Bluetooth is on, but no paired devices found.';
+    const devNames = st.devices.slice(0, 3).map((d) => d.name).join(', ');
+    return `Bluetooth is on. Paired devices: ${devNames}.`;
+  },
+
+  // ----- safe sleep / suspend -----
+  async suspend_laptop() {
+    if (platform.suspend) {
+      setTimeout(() => platform.suspend(), 2000);
+    } else {
+      setTimeout(() => run('systemctl', ['suspend']), 2000);
+    }
+    return 'Putting your laptop to sleep now.';
+  },
 };
 
 const ALIASES = {
@@ -486,6 +546,9 @@ const ALIASES = {
   clipboard: 'read_clipboard', clip: 'read_clipboard', read_clip: 'read_clipboard',
   save_clip: 'save_clipboard', save_clipboard: 'save_clipboard', copy: 'save_clipboard',
   clips: 'read_clips', read_clips: 'read_clips', show_clips: 'show_clips',
+  mic: 'mute_mic', microphone: 'mute_mic', unmute_mic: 'mute_mic',
+  bluetooth: 'bluetooth_control', bt: 'bluetooth_control',
+  sleep: 'suspend_laptop', suspend: 'suspend_laptop', sleep_laptop: 'suspend_laptop',
 };
 
 // ---------- auth ----------

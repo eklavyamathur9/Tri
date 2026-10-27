@@ -47,12 +47,14 @@ Follow the prompts to copy instructions, tool description, URL, and token to you
 
 ## Features
 
-- **App Control**: Open apps, websites, files
-- **Media**: Play/pause/skip, volume control on YouTube and system
-- **Productivity**: Notes, timers, focus sessions with reminders
-- **File Search**: Find and open documents by voice
-- **Deadlines**: Get reminded with outbound calls
-- **System**: Battery status, screenshots, lock screen, TTS
+- **App & Web Control**: Dynamic `.desktop` application discovery (opens any installed app like VS Code, Brave, Chromium, Cursor, Spotify), opens websites and files
+- **Media & Audio**: Play/pause/skip, exact volume percentage (`volume 45%`), PipeWire microphone mute/unmute toggle
+- **Device Control**: Bluetooth connection and device management (`bluetoothctl`), battery status, Wi-Fi network detection
+- **Clipboard Management**: Voice clipboard reader, persistent multi-clip history (`Tri Clips.md`), optional Obsidian Vault sync
+- **Productivity**: Notes, desktop notifications (`notify-send`), timers, focus sessions with reminders
+- **File Search**: Find and open documents across Desktop, Documents, Downloads by voice
+- **Deadlines**: Get reminded with automatic outbound phone calls
+- **System**: Screenshot capture (`flameshot` on Wayland/X11), screen lock, safe laptop sleep/suspend
 - **Classroom**: Google Classroom automation (optional)
 
 ## Project Structure

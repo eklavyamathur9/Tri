@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "665eed70ee982936d935e96e87199b6c61ded526",
-    "indexed_at": "2026-10-27T19:20:18Z",
+    "commit": "dc5cf71bbb5b45c8aa2479f9dd990026fbe034a1",
+    "indexed_at": "2026-10-27T19:38:30Z",
     "project": "home-eklavyamathur9-Projects-Tri",
-    "nodes": 595,
-    "edges": 1358,
-    "original_size": 3342336,
-    "compressed_size": 440520,
+    "nodes": 615,
+    "edges": 1417,
+    "original_size": 3538944,
+    "compressed_size": 464775,
     "compression_level": 9
 }

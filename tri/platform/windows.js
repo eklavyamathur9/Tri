@@ -59,6 +59,15 @@ export const windowsPlatform = {
   setClipboard: async () => true,
   readNetwork: async () => null,
   notify: async () => true,
+  suspend: async () => true,
+  toggleMic: async () => ({ ok: false }),
+  bluetooth: {
+    status: async () => ({ powered: false, devices: [] }),
+    power: async () => false,
+    connect: async () => ({ ok: false }),
+    disconnect: async () => ({ ok: false }),
+  },
+  findDesktopApp: () => null,
   powershell: psEnv
 };
 
