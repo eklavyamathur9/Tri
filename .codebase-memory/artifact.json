@@ -1,12 +1,12 @@
 {
     "schema_version": 2,
-    "commit": "6f93417317f91044b53630877a5359e6e8c4ad17",
-    "indexed_at": "2026-10-27T19:06:07Z",
+    "commit": "4760c31c40016d42fbe4bda9f63788a15f8f1b0c",
+    "indexed_at": "2026-10-27T19:06:27Z",
     "project": "home-eklavyamathur9-Projects-Tri",
     "nodes": 585,
     "edges": 1318,
-    "original_size": 3211264,
-    "compressed_size": 427851,
-    "compression_level": 9,
+    "original_size": 4063232,
+    "compressed_size": 591532,
+    "compression_level": 3,
     "reconcile_basis": "git-clean-head"
 }
