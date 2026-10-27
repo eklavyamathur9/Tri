@@ -1,0 +1,16 @@
+{
+  "name": "tri",
+  "version": "0.2.0",
+  "description": "Tri - Personal AI agent for autonomous laptop control",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js",
+    "tri": "node start.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

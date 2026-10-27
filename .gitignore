@@ -1,0 +1,16 @@
+node_modules/
+tri/node_modules/
+.env
+tri/.env
+*.env
+deadlines.json
+tri/deadlines.json
+.classroom-profile/
+tri/.classroom-profile/
+classroom-cache.json
+tri/classroom-cache.json
+classroom-state.json
+tri/classroom-state.json
+tunnel-url.txt
+tri/tunnel-url.txt
+.DS_Store

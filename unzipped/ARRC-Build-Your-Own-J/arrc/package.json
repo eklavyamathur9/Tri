@@ -1,0 +1,14 @@
+{
+  "name": "arrc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js",
+    "j": "node start.js"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
