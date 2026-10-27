@@ -30,6 +30,7 @@ const TOKEN = process.env.TRI_TOKEN || process.env.JARVIS_TOKEN || '';
 const OWNER = (process.env.TRI_OWNER || process.env.OWNER_NUMBER || '').replace(/\D/g, '');
 const ALLOW_NO_CALLER = String(process.env.ALLOW_NO_CALLER !== undefined ? process.env.ALLOW_NO_CALLER : (process.env.TRI_ALLOW_NO_CALLER || 'true')) === 'true';
 const OWNER_CALLER_ID = (process.env.TRI_OWNER_CALLER_ID || process.env.OWNER_CALLER_ID || '').trim().toLowerCase();
+const OWNER_NAME = (process.env.OWNER_NAME || process.env.TRI_OWNER_NAME || process.env.USER_NAME || 'Manan').trim().toLowerCase();
 const OWNER_HASHES = new Set(OWNER ? (() => {
   const ten = OWNER.slice(-10);
   const forms = [OWNER, `+${OWNER}`, ten, `0${ten}`, `+91${ten}`, `91${ten}`, `+91 ${ten}`];
@@ -557,11 +558,12 @@ function authorise(req, body) {
   const given = auth.replace(/^Bearer\s+/i, '') || req.headers['x-tri-token'] || body.token || '';
   if (!TOKEN || given.length !== TOKEN.length || !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(TOKEN))) return 'bad token';
   const raw = String(req.headers['x-caller'] || body.caller || body.user_identifier || '').trim();
-  if (!OWNER && !OWNER_CALLER_ID) return null;
-  if (!raw) return ALLOW_NO_CALLER ? null : 'no caller number';
   lastCaller = raw;
-  // Sarvam passes a hashed caller id, not the number. Accept the configured owner hash, or a
-  // hash of the owner's number in a common format; plain numbers are compared on the last 10 digits.
+  if (ALLOW_NO_CALLER) return null;
+  if (!OWNER && !OWNER_CALLER_ID && !OWNER_NAME) return null;
+  if (!raw) return 'no caller number';
+
+  if (OWNER_NAME && raw.toLowerCase() === OWNER_NAME) return null;
   if (OWNER_CALLER_ID && raw.toLowerCase() === OWNER_CALLER_ID) return null;
   if (/^[0-9a-f]{32,}$/i.test(raw)) return OWNER_HASHES.has(raw.toLowerCase()) ? null : `caller ${raw.slice(0, 6)}… is not the owner`;
   const digits = raw.replace(/\D/g, '');
