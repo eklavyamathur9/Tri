@@ -188,19 +188,16 @@ export const linuxPlatform = {
     try { fs.mkdirSync(dir, { recursive: true }); } catch {}
     const isWayland = Boolean(process.env.WAYLAND_DISPLAY);
 
-    const tools = isWayland ? [
-      ['grim', [filePath]],
+    const tools = [
+      ['flameshot', ['full', '-p', filePath]],
       ['gnome-screenshot', ['-f', filePath]],
-      ['spectacle', ['-b', '-n', '-o', filePath]],
+      ...(isWayland ? [
+        ['grim', [filePath]],
+        ['spectacle', ['-b', '-n', '-o', filePath]],
+      ] : []),
       ['scrot', [filePath]],
       ['maim', [filePath]],
       ['import', ['-window', 'root', filePath]],
-    ] : [
-      ['scrot', [filePath]],
-      ['maim', [filePath]],
-      ['gnome-screenshot', ['-f', filePath]],
-      ['import', ['-window', 'root', filePath]],
-      ['grim', [filePath]],
     ];
 
     for (const [cmd, args] of tools) {
