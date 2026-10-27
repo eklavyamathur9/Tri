@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawn, execFile } from 'node:child_process';
+import { spawn, execFile, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findFiles, describe, buildIndex } from './files.js';
 import { createMonitor } from './monitor.js';
@@ -159,7 +159,10 @@ const APPS = isWindows ? {
   powerpoint: ['cmd.exe', ['/c', 'start', '', 'powerpnt']],
 } : {
   notepad: ['gedit', []], texteditor: ['gedit', []], calculator: ['gnome-calculator', []], calc: ['gnome-calculator', []],
-  chrome: ['google-chrome', []], chromium: ['chromium', []], browser: ['xdg-open', []],
+  chrome: fs.existsSync('/usr/bin/google-chrome') ? ['google-chrome', []] : (fs.existsSync('/usr/bin/chromium') ? ['chromium', []] : ['brave-browser', []]),
+  chromium: ['chromium', []],
+  brave: ['brave-browser', []],
+  browser: ['x-www-browser', []],
   firefox: ['firefox', []],
   'vs code': ['code', []], vscode: ['code', []], 'visual studio code': ['code', []], code: ['code', []], codium: ['codium', []],
   'file explorer': ['nautilus', []], explorer: ['nautilus', []], files: ['nautilus', []], nemo: ['nemo', []], thunar: ['thunar', []],
@@ -176,9 +179,39 @@ const clean = (s) => String(s ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().sli
 const norm = (s) => clean(s).toLowerCase().replace(/^(the|my)\s+/, '').replace(/[.!?]+$/, '');
 
 const ACTIONS = {
+  async open_website({ input }) {
+    const q = norm(input);
+    if (!q) return 'Which website should I open?';
+    let url = SITES[q];
+    if (!url && /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(q)) url = `https://${q}`;
+    if (!url && /^https?:\/\/\S+$/i.test(clean(input))) url = clean(input);
+    if (!url) url = `https://www.google.com/search?btnI=1&q=${encodeURIComponent(q + ' official site')}`;
+    await openUrl(url);
+    return `Opened ${q} in the browser.`;
+  },
+  async web_search({ input }) {
+    const q = clean(input);
+    if (!q) return 'What should I search for?';
+    await openUrl(`https://www.google.com/search?q=${encodeURIComponent(q)}`);
+    return `Searching Google for ${q}. The results are on your screen.`;
+  },
+  async play_youtube({ input }) {
+    const q = clean(input);
+    if (!q) return 'What should I play?';
+    let id = null;
+    try {
+      const html = await (await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, { headers: { 'Accept-Language': 'en-IN', 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6000) })).text();
+      id = html.match(/"videoId":"([\w-]{11})"/)?.[1] || null;
+    } catch {}
+    await openUrl(id ? `https://www.youtube.com/watch?v=${id}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`);
+    return id ? `Playing ${q} on YouTube.` : `Opened YouTube results for ${q}.`;
+  },
   async open_app({ input }) {
     const q = norm(input);
-    const app = APPS[q];
+    let app = APPS[q];
+    if (app && app[0] === 'xdg-open' && app[1]?.length === 0) {
+      app = ['x-www-browser', []];
+    }
     if (!app) {
       if (platform.findDesktopApp) {
         const desktopApp = platform.findDesktopApp(q);
@@ -190,7 +223,10 @@ const ACTIONS = {
       if (SITES[q]) return ACTIONS.open_website({ input: q });
       return `I can't open ${q || 'that'}. I can open any installed app or document on your laptop.`;
     }
-    const ok = await run(app[0], app[1]);
+    let ok = await run(app[0], app[1]);
+    if (!ok && platform.findDesktopApp) {
+      ok = await platform.runApp(q);
+    }
     return ok ? `Opened ${q}.` : `I tried to open ${q} but it did not start.`;
   },
   async take_note({ input }) {
@@ -533,6 +569,53 @@ const ACTIONS = {
     }
     return 'Putting your laptop to sleep now.';
   },
+
+  // ----- project / work updates -----
+  async work_update({ input }) {
+    const projectsDir = path.join(os.homedir(), 'Projects');
+    const targetDir = (input && fs.existsSync(path.join(projectsDir, clean(input))))
+      ? path.join(projectsDir, clean(input))
+      : (fs.existsSync(path.join(projectsDir, 'Tri')) ? path.join(projectsDir, 'Tri') : ROOT);
+
+    let gitInfo = null;
+    try {
+      const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, encoding: 'utf8', timeout: 2000 }).trim();
+      const lastCommit = execSync('git log -1 --pretty=format:"%s"', { cwd: targetDir, encoding: 'utf8', timeout: 2000 }).trim();
+      const status = execSync('git status --porcelain', { cwd: targetDir, encoding: 'utf8', timeout: 2000 }).trim();
+      const changes = status ? status.split('\n').filter(Boolean).length : 0;
+      gitInfo = { branch, lastCommit, changes, repo: path.basename(targetDir) };
+    } catch {}
+
+    const pendingDeadlines = monitor.list();
+    const parts = [];
+    if (gitInfo) {
+      parts.push(`On project ${gitInfo.repo}, the latest commit is "${gitInfo.lastCommit}" on branch ${gitInfo.branch}. You have ${gitInfo.changes ? gitInfo.changes + ' uncommitted changes' : 'a clean working tree'}.`);
+    }
+    if (pendingDeadlines.length) {
+      parts.push(`You have ${pendingDeadlines.length} pending deadline${pendingDeadlines.length > 1 ? 's' : ''}: ${pendingDeadlines[0].title}.`);
+    } else {
+      parts.push('No pending deadlines.');
+    }
+    return parts.join(' ') || 'Everything is up to date.';
+  },
+
+  // ----- system resources -----
+  async system_resources() {
+    let ramText = '';
+    try {
+      const mem = fs.readFileSync('/proc/meminfo', 'utf8');
+      const total = parseInt(mem.match(/MemTotal:\s+(\d+)/)?.[1] || '0') / 1024 / 1024;
+      const avail = parseInt(mem.match(/MemAvailable:\s+(\d+)/)?.[1] || '0') / 1024 / 1024;
+      const used = (total - avail).toFixed(1);
+      ramText = `${used} GB used of ${total.toFixed(1)} GB RAM`;
+    } catch {}
+    let diskText = '';
+    try {
+      const df = execSync('df -h / | tail -1', { encoding: 'utf8', timeout: 2000 }).trim().split(/\s+/);
+      diskText = `${df[3]} free of ${df[1]} disk space`;
+    } catch {}
+    return `System resources: ${ramText}${ramText && diskText ? ', and ' : ''}${diskText}.`;
+  },
 };
 
 const ALIASES = {
@@ -550,6 +633,9 @@ const ALIASES = {
   mic: 'mute_mic', microphone: 'mute_mic', unmute_mic: 'mute_mic',
   bluetooth: 'bluetooth_control', bt: 'bluetooth_control',
   sleep: 'suspend_laptop', suspend: 'suspend_laptop', sleep_laptop: 'suspend_laptop',
+  work: 'work_update', work_update: 'work_update', latest_work: 'work_update', project_status: 'work_update',
+  work_status: 'work_update', git_status: 'work_update', update_work: 'work_update', check_work: 'work_update',
+  resources: 'system_resources', system_resources: 'system_resources', ram: 'system_resources', memory: 'system_resources', cpu: 'system_resources',
 };
 
 // ---------- auth ----------
