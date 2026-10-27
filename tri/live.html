@@ -115,22 +115,23 @@ h1 span{color:var(--cyan)}
     </div>
     <div class="panel samples">
       <div class="label">Try saying</div>
-      <div><span>“Mera EM5120 assignment kholo”</span></div>
-      <div><span>“25 minute focus session for my assignment”</span></div>
-      <div><span>“Remind me, DBMS project due tomorrow 5 pm”</span></div>
-      <div><span>“YouTube pe Arijit Singh ke gaane chalao”</span></div>
-      <div><span>“Work mode on karo”</span></div>
-      <div><span>“5 minute ka timer lagao chai ke liye”</span></div>
-      <div><span>“Laptop se bolo, hello judges”</span></div>
+      <div><span>“What's my battery and Wi-Fi status?”</span></div>
+      <div><span>“Set volume to 40 percent”</span></div>
+      <div><span>“Mute my microphone”</span></div>
       <div><span>“Take a screenshot”</span></div>
-      <div><span>“Volume kam karo”</span></div>
+      <div><span>“Open VS Code”</span></div>
+      <div><span>“Connect to my Bluetooth speaker”</span></div>
+      <div><span>“What is on my clipboard?”</span></div>
+      <div><span>“Save this to my clips”</span></div>
+      <div><span>“5 minute ka timer lagao”</span></div>
+      <div><span>“Put my laptop to sleep”</span></div>
     </div>
   </aside>
 
   <main class="core">
     <div>
-      <h1>A<span>.</span>R<span>.</span>R<span>.</span>C</h1>
-      <div class="tag">Your laptop, on a phone call. In your language.</div>
+      <h1>T<span>.</span>R<span>.</span>I</h1>
+      <div class="tag">Your Linux laptop, on a phone call. In your language.</div>
     </div>
     <div class="reactor" id="reactor" aria-hidden="true">
       <svg viewBox="0 0 200 200">
@@ -174,11 +175,13 @@ h1 span{color:var(--cyan)}
 <script>
 const CAPS = {
   open_website:['🌐','Open any website'], web_search:['🔎','Google search'], play_youtube:['▶️','Play on YouTube'],
-  open_app:['🗂️','Open apps'], media_control:['🎚️','Music and volume'], run_routine:['⚡','Work / study modes'],
+  open_app:['🗂️','Open apps (dynamic)'], media_control:['🎚️','Music & volume %'], run_routine:['⚡','Work / study modes'],
   set_timer:['⏱️','Timers that talk'], speak_on_laptop:['🔊','Laptop speaks'], take_screenshot:['📸','Screenshots'],
   draft_email:['✉️','Draft emails'], directions:['🧭','Directions'], weather:['⛅','Weather'],
   take_note:['📝','Take notes'], read_notes:['📖','Read notes'], show_notes:['🗒️','Show notes'],
-  system_status:['🔋','Battery and time'], lock_screen:['🔒','Lock laptop'],
+  read_clipboard:['🗣️','Read clipboard'], save_clipboard:['📋','Save clip'], read_clips:['📑','Read clips'], show_clips:['📒','Show clip notebook'],
+  mute_mic:['🎙️','Mic privacy toggle'], bluetooth_control:['📶','Bluetooth devices'], suspend_laptop:['💤','Sleep laptop'],
+  send_notification:['🔔','Desktop alerts'], system_status:['🔋','Battery, Wi-Fi & time'], lock_screen:['🔒','Lock laptop'],
   find_file:['📂','Find and open any file'], focus_session:['🎯','Focus sessions'],
   add_deadline:['⏰','Deadline calls'], list_deadlines:['📋','What is due'], finish_deadline:['✅','Mark submitted'],
   call_owner:['📞','Tri calls you'],

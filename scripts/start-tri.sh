@@ -25,11 +25,18 @@ if [ ! -d "node_modules" ]; then
     npm install --no-audit --no-fund
 fi
 
-# Setup if needed
-if [ ! -f ".env" ]; then
+# Setup if needed or if placeholder owner number is detected
+NEEDS_SETUP=0
+if [ ! -f ".env" ] || [ "$1" = "--setup" ] || [ "$1" = "--reset" ]; then
+    NEEDS_SETUP=1
+elif grep -q "919999999999" .env 2>/dev/null; then
+    NEEDS_SETUP=1
+fi
+
+if [ $NEEDS_SETUP -eq 1 ]; then
     echo ""
-    echo "One question, then Tri is ready."
-    node setup.js
+    echo "One question to link your phone number to Tri:"
+    node setup.js "$@"
     echo ""
 fi
 
