@@ -57,6 +57,8 @@ export const windowsPlatform = {
   setVolume: () => Promise.resolve(true),
   getClipboard: async () => '',
   setClipboard: async () => true,
+  readNetwork: async () => null,
+  notify: async () => true,
   powershell: psEnv
 };
 

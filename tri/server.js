@@ -37,6 +37,7 @@ const OWNER_HASHES = new Set(OWNER ? (() => {
 })() : []);
 let lastCaller = '';
 const NOTES = path.join(os.homedir(), 'Documents', 'Tri Notes.md');
+const CLIPS = path.join(os.homedir(), 'Documents', 'Tri Clips.md');
 
 const activity = [];
 const recent = new Map();
@@ -221,7 +222,14 @@ const ACTIONS = {
         }
       }
     } catch {}
-    return `It is ${time} on ${date}. The laptop is on, ${battery}.`;
+    let net = '';
+    try {
+      if (platform.readNetwork) {
+        const n = await platform.readNetwork();
+        if (n) net = `, ${n}`;
+      }
+    } catch {}
+    return `It is ${time} on ${date}. The laptop is on, ${battery}${net}.`;
   },
   async lock_screen() {
     if (platform.lockScreen) {
@@ -237,13 +245,21 @@ const ACTIONS = {
   // ----- the "wow" set: fixed keys, fixed URLs, or text that is only spoken/displayed -----
   async media_control({ input }) {
     const q = norm(input).replace(/^(the )?(music|song|video)\s*/, '').trim() || 'play';
+    const volMatch = q.match(/(?:volume|vol)\s*(?:to\s*)?(\d{1,3})%?/i) || q.match(/^(\d{1,3})%?\s*(?:volume|vol)/i);
+    if (volMatch) {
+      const pct = Math.min(100, Math.max(0, parseInt(volMatch[1], 10)));
+      if (platform.setVolume) {
+        await platform.setVolume(pct);
+        return `Turned the volume to ${pct} percent.`;
+      }
+    }
     if (isLinux && platform.media) {
       try {
         if (q.includes('next')) { await platform.mediaPlayerctl?.('next'); await platform.media.next?.(); return 'Skipped to the next track.'; }
         if (q.includes('prev') || q.includes('back')) { await platform.mediaPlayerctl?.('previous'); await platform.media.previous?.(); return 'Went back to the previous track.'; }
         if (q.includes('volume up') || q.includes('louder')) { await platform.media.volumeUp?.(); await platform.setVolume?.('up'); return 'Turned the volume up.'; }
         if (q.includes('volume down') || q.includes('quieter')) { await platform.media.volumeDown?.(); await platform.setVolume?.('down'); return 'Turned the volume down.'; }
-        if (q.includes('mute')) { await platform.media.mute?.(); await platform.setVolume?.('mute'); return 'Toggled mute.'; }
+        if (q.includes('mute') || q.includes('unmute')) { await platform.media.mute?.(); await platform.setVolume?.('mute'); return 'Toggled mute.'; }
         await platform.mediaPlayerctl?.('play-pause'); await platform.media.playPause?.();
         return 'Toggled play and pause.';
       } catch {}
@@ -402,9 +418,75 @@ const ACTIONS = {
   async submit_assignment({ input }) { return classroom.prepare(input); },
   async confirm_submission() { return classroom.confirm(); },
   async submission_status() { return classroom.submissionStatus(); },
+
+  // ----- desktop notification -----
+  async send_notification({ input }) {
+    const raw = clean(input);
+    if (!raw) return 'What should the notification say?';
+    const [title, body] = raw.includes('|') ? raw.split('|').map((s) => s.trim()) : ['Tri', raw];
+    if (platform.notify) {
+      await platform.notify(title, body || title);
+    } else {
+      await run('notify-send', [title, body || title]);
+    }
+    return `Notification posted on your screen: ${body || title}.`;
+  },
+
+  // ----- clipboard reader & multi-clip history -----
+  async read_clipboard() {
+    if (!platform.getClipboard) return 'Clipboard reading is not supported on this device.';
+    const text = (await platform.getClipboard()) || '';
+    if (!text.trim()) return 'Your clipboard is currently empty.';
+    const preview = text.trim().slice(0, 240);
+    const more = text.trim().length > 240 ? '... and more' : '';
+    return `Your clipboard currently says: ${preview}${more}.`;
+  },
+  async save_clipboard({ input }) {
+    let text = clean(input);
+    if (!text || norm(text) === 'clipboard' || norm(text) === 'none' || norm(text) === 'current') {
+      text = platform.getClipboard ? (await platform.getClipboard()) : '';
+    }
+    if (!text || !text.trim()) return 'There is nothing on your clipboard or in your message to save.';
+    fs.mkdirSync(path.dirname(CLIPS), { recursive: true });
+    if (!fs.existsSync(CLIPS)) fs.writeFileSync(CLIPS, '# Tri Clipboard History\n\n');
+    const timestamp = new Date().toLocaleString('en-IN');
+    fs.appendFileSync(CLIPS, `### Saved ${timestamp}\n\`\`\`\n${text.trim()}\n\`\`\`\n\n`);
+    const preview = text.trim().slice(0, 100);
+    return `Saved to your clipboard collection: "${preview}${text.length > 100 ? '...' : ''}".`;
+  },
+  async read_clips() {
+    if (!fs.existsSync(CLIPS)) return 'You have no saved clipboard snippets yet.';
+    const content = fs.readFileSync(CLIPS, 'utf8');
+    const entries = content.split(/### Saved /).filter(Boolean);
+    if (!entries.length) return 'You have no saved clipboard snippets yet.';
+    const last = entries[entries.length - 1];
+    const preview = last.replace(/```/g, '').replace(/^[^\n]+\n/, '').trim().slice(0, 150);
+    return `You have ${entries.length} saved clipboard snippet${entries.length > 1 ? 's' : ''}. The latest one says: ${preview}.`;
+  },
+  async show_clips() {
+    if (!fs.existsSync(CLIPS)) return 'You have no saved clipboard snippets yet.';
+    if (platform.openFile) {
+      await platform.openFile(CLIPS);
+    } else {
+      await openUrl(CLIPS);
+    }
+    return 'Your saved clipboard snippets are open on the screen.';
+  },
 };
 
-const ALIASES = { open_site: 'open_website', website: 'open_website', search: 'web_search', youtube: 'play_youtube', play: 'play_youtube', app: 'open_app', note: 'take_note', notes: 'read_notes', status: 'system_status', battery: 'system_status', lock: 'lock_screen', media: 'media_control', volume: 'media_control', say: 'speak_on_laptop', speak: 'speak_on_laptop', screenshot: 'take_screenshot', timer: 'set_timer', email: 'draft_email', maps: 'directions', routine: 'run_routine', mode: 'run_routine', file: 'find_file', open_file: 'find_file', focus: 'focus_session', deadline: 'add_deadline', remind: 'add_deadline', deadlines: 'list_deadlines', submitted: 'finish_deadline', done: 'finish_deadline' };
+const ALIASES = {
+  open_site: 'open_website', website: 'open_website', search: 'web_search', youtube: 'play_youtube', play: 'play_youtube',
+  app: 'open_app', note: 'take_note', notes: 'read_notes', status: 'system_status', battery: 'system_status',
+  network: 'system_status', wifi: 'system_status', lock: 'lock_screen', media: 'media_control', volume: 'media_control',
+  say: 'speak_on_laptop', speak: 'speak_on_laptop', screenshot: 'take_screenshot', timer: 'set_timer',
+  email: 'draft_email', maps: 'directions', routine: 'run_routine', mode: 'run_routine', file: 'find_file',
+  open_file: 'find_file', focus: 'focus_session', deadline: 'add_deadline', remind: 'add_deadline',
+  deadlines: 'list_deadlines', submitted: 'finish_deadline', done: 'finish_deadline',
+  notify: 'send_notification', notification: 'send_notification', alert: 'send_notification',
+  clipboard: 'read_clipboard', clip: 'read_clipboard', read_clip: 'read_clipboard',
+  save_clip: 'save_clipboard', save_clipboard: 'save_clipboard', copy: 'save_clipboard',
+  clips: 'read_clips', read_clips: 'read_clips', show_clips: 'show_clips',
+};
 
 // ---------- auth ----------
 function authorise(req, body) {

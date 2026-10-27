@@ -299,7 +299,33 @@ export const linuxPlatform = {
   shell: async (cmd) => psExec(cmd),
 
   // PowerShell compatibility shim (sh wrapper on Linux)
-  powershell: async (cmd) => psExec(cmd)
+  powershell: async (cmd) => psExec(cmd),
+
+  // Read active network info (SSID / connection type)
+  readNetwork: async () => {
+    try {
+      const out = await exec('nmcli', ['-t', '-f', 'TYPE,STATE,CONNECTION', 'dev']);
+      if (out) {
+        for (const line of out.split('\n')) {
+          const [type, state, conn] = line.split(':');
+          if (state === 'connected' && conn) {
+            if (type === 'wifi') return `connected to ${conn} Wi-Fi`;
+            if (type === 'ethernet') return `connected via ethernet (${conn})`;
+          }
+        }
+      }
+    } catch {}
+    return null;
+  },
+
+  // Desktop notification
+  notify: async (title, body) => {
+    try {
+      return await run('notify-send', [title || 'Tri', body || '']);
+    } catch {
+      return false;
+    }
+  }
 };
 
 export default linuxPlatform;

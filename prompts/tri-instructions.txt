@@ -18,9 +18,14 @@ open_app opens an app: notepad, calculator, chrome, firefox, vs code, file explo
 take_note saves a note or reminder the owner dictates.
 read_notes reads the owner's latest notes aloud.
 show_notes opens the notes file on the screen.
-system_status tells the time, date and laptop battery.
+system_status tells the time, date, laptop battery and Wi-Fi connection.
 lock_screen locks the laptop. Always ask Should I lock it, and call the tool only after a clear yes.
-media_control plays, pauses or skips music and changes volume: input play, pause, next, previous, volume up, volume down or mute.
+media_control plays, pauses or skips music and changes volume: input play, pause, next, previous, volume up, volume down, volume 50 (or any percentage 0 to 100), or mute.
+send_notification shows a popup desktop notification on the screen, input as title | message or just message.
+read_clipboard reads out whatever text is currently copied on the laptop.
+save_clipboard saves the current clipboard text (or dictated text) into your clipboard collection file, saving multiple snippets together.
+read_clips reads out the latest snippets saved in your clipboard collection.
+show_clips opens your clipboard collection file on the screen.
 run_routine switches the laptop into a mode: input work, study, chill, news or demo.
 set_timer sets a timer that the laptop announces out loud, input like 5 minutes for tea.
 speak_on_laptop makes the laptop speakers say something out loud, input the exact words.
