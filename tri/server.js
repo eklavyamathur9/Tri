@@ -31,7 +31,7 @@ const TOKEN = process.env.TRI_TOKEN || process.env.JARVIS_TOKEN || '';
 const OWNER = (process.env.TRI_OWNER || process.env.OWNER_NUMBER || '').replace(/\D/g, '');
 const ALLOW_NO_CALLER = String(process.env.ALLOW_NO_CALLER !== undefined ? process.env.ALLOW_NO_CALLER : (process.env.TRI_ALLOW_NO_CALLER || 'true')) === 'true';
 const OWNER_CALLER_ID = (process.env.TRI_OWNER_CALLER_ID || process.env.OWNER_CALLER_ID || '').trim().toLowerCase();
-const OWNER_NAME = (process.env.OWNER_NAME || process.env.TRI_OWNER_NAME || process.env.USER_NAME || 'Manan').trim().toLowerCase();
+const OWNER_NAMES = new Set(['manan', 'mathur', 'eklavya', (process.env.OWNER_NAME || '').toLowerCase(), (process.env.USER_NAME || '').toLowerCase(), (process.env.TRI_OWNER_NAME || '').toLowerCase()].filter(Boolean));
 const OWNER_HASHES = new Set(OWNER ? (() => {
   const ten = OWNER.slice(-10);
   const forms = [OWNER, `+${OWNER}`, ten, `0${ten}`, `+91${ten}`, `91${ten}`, `+91 ${ten}`];
@@ -716,7 +716,7 @@ function authorise(req, body) {
   if (!OWNER && !OWNER_CALLER_ID && !OWNER_NAME) return null;
   if (!raw) return 'no caller number';
 
-  if (OWNER_NAME && raw.toLowerCase() === OWNER_NAME) return null;
+  if (OWNER_NAMES.has(raw.toLowerCase()) || Array.from(OWNER_NAMES).some(n => raw.toLowerCase().includes(n))) return null;
   if (OWNER_CALLER_ID && raw.toLowerCase() === OWNER_CALLER_ID) return null;
   if (/^[0-9a-f]{32,}$/i.test(raw)) return OWNER_HASHES.has(raw.toLowerCase()) ? null : `caller ${raw.slice(0, 6)}… is not the owner`;
   const digits = raw.replace(/\D/g, '');
