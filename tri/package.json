@@ -1,7 +1,7 @@
 {
   "name": "tri",
-  "version": "0.2.0",
-  "description": "Tri - Personal AI agent for autonomous laptop control",
+  "version": "1.0.0",
+  "description": "Tri - Autonomous Voice AI Agent for Linux Laptop Control",
   "private": true,
   "type": "module",
   "scripts": {
