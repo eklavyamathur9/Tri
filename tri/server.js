@@ -13,6 +13,7 @@ import { findFiles, describe, buildIndex } from './files.js';
 import { createMonitor } from './monitor.js';
 import { createClassroom } from './classroom.js';
 import platform, { isWindows, isLinux } from './platform/index.js';
+import { getBraveProfiles, matchProfile, openBraveProfile, readWebpage } from './browser.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 for (const line of (fs.existsSync(path.join(ROOT, '.env')) ? fs.readFileSync(path.join(ROOT, '.env'), 'utf8') : '').split(/\r?\n/)) {
@@ -208,6 +209,14 @@ const ACTIONS = {
   },
   async open_app({ input }) {
     const q = norm(input);
+    // Check if user is asking for a specific browser profile/account (e.g. "personal brave", "college account on brave")
+    if (q.includes('brave') || q.includes('profile') || q.includes('account') || q.includes('personal') || q.includes('college') || q.includes('work')) {
+      const profile = matchProfile(q);
+      if (profile) {
+        const res = await openBraveProfile(q);
+        return res.message;
+      }
+    }
     let app = APPS[q];
     if (app && app[0] === 'xdg-open' && app[1]?.length === 0) {
       app = ['x-www-browser', []];
@@ -616,6 +625,61 @@ const ACTIONS = {
     } catch {}
     return `System resources: ${ramText}${ramText && diskText ? ', and ' : ''}${diskText}.`;
   },
+
+  // ----- Brave profile & accounts -----
+  async open_brave_profile({ input }) {
+    const [profileQuery, targetUrl] = String(input || '').split('|').map(s => s.trim());
+    const res = await openBraveProfile(profileQuery, targetUrl);
+    return res.message;
+  },
+
+  // ----- Playwright webpage reader -----
+  async read_webpage({ input }) {
+    const url = clean(input);
+    if (!url) return 'Which website or link should I read for you?';
+    return await readWebpage(url);
+  },
+
+  // ----- Real-time screen & media awareness -----
+  async inspect_screen() {
+    let media = '';
+    try {
+      media = execSync('playerctl metadata --format "{{xesam:title}} by {{xesam:artist}} on {{playerName}}" 2>/dev/null', { encoding: 'utf8' }).trim();
+    } catch {}
+
+    const apps = new Set();
+    try {
+      const ps = execSync('ps -u $USER -o comm', { encoding: 'utf8' }).split('\n');
+      const known = {
+        'brave': 'Brave Browser',
+        'chromium': 'Chromium',
+        'firefox': 'Firefox',
+        'code': 'VS Code',
+        'gnome-terminal': 'Terminal',
+        'spotify': 'Spotify',
+        'vlc': 'VLC Media Player',
+        'nautilus': 'Files',
+        'gedit': 'Text Editor'
+      };
+      for (const p of ps) {
+        const k = p.trim();
+        if (known[k]) apps.add(known[k]);
+      }
+    } catch {}
+
+    let screenshotTaken = false;
+    if (platform.takeScreenshot) {
+      await platform.takeScreenshot().catch(() => {});
+      screenshotTaken = true;
+    }
+
+    const appList = Array.from(apps).join(', ');
+    const parts = [];
+    if (appList) parts.push(`Open apps on your screen: ${appList}.`);
+    if (media) parts.push(`Currently playing: ${media}.`);
+    if (screenshotTaken) parts.push('I took a fresh screenshot for your records.');
+    return parts.join(' ') || 'Screen is quiet. No active media or major apps detected.';
+  },
 };
 
 const ALIASES = {
@@ -636,6 +700,9 @@ const ALIASES = {
   work: 'work_update', work_update: 'work_update', latest_work: 'work_update', project_status: 'work_update',
   work_status: 'work_update', git_status: 'work_update', update_work: 'work_update', check_work: 'work_update',
   resources: 'system_resources', system_resources: 'system_resources', ram: 'system_resources', memory: 'system_resources', cpu: 'system_resources',
+  brave_profile: 'open_brave_profile', brave_account: 'open_brave_profile', account: 'open_brave_profile', profile: 'open_brave_profile',
+  screen: 'inspect_screen', inspect_screen: 'inspect_screen', what_is_on_my_screen: 'inspect_screen', see_screen: 'inspect_screen', screen_status: 'inspect_screen',
+  read_page: 'read_webpage', read_webpage: 'read_webpage', webpage: 'read_webpage', summarize_page: 'read_webpage',
 };
 
 // ---------- auth ----------
