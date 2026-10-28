@@ -246,6 +246,19 @@ cd .. && ./scripts/start-tri.sh
 - [x] Active clipboard reader (`read_clipboard`)
 - [x] Multi-snippet clipboard collection (`save_clipboard`, `read_clips`, `show_clips`)
 - [x] Optional Obsidian Vault sync support (`OBSIDIAN_VAULT` in `.env`)
+- [x] Brave profile & account switcher (`open_brave_profile` dynamically mapping Personal, College, Work)
+- [x] Real-time screen awareness (`inspect_screen` with playerctl metadata, running apps, and Flameshot screenshot)
+- [x] Playwright webpage text reader (`read_webpage`)
+- [x] Git work update & project tracking (`work_update`)
+- [x] Live system resource inspection (`system_resources` for RAM and disk space)
+- [x] Owner identity verification with name support (`Manan`) alongside phone numbers
+
+## Release v1.0.0 Status: Ready & Live
+- Total actions supported: 39
+- Platform compatibility: Linux (Wayland / X11) + Windows backward compatibility
+- Audio engine: PipeWire / WirePlumber
+- Ingress: Cloudflare edge tunnel
+- Voice engine: Sarvam AI Indus (Saaras STT, Sarvam LLM, Bulbul TTS)
 
 ## Benchmark & Inspiration: pranithvelar/Jarvis Comparison
 

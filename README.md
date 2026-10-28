@@ -1,121 +1,125 @@
-# ⚡ Tri — Voice-Controlled Linux Laptop Agent
+# ⚡ Tri — Linux AI Voice Agent for Laptop Control
 
-> Call your personal AI agent from any phone to control your Linux laptop hands-free: launch applications, adjust volume & mute mic, check battery & Wi-Fi, manage Bluetooth, capture screenshots, manage multi-snippet clipboards, write notes, and lock down your workstation.
+> **Tri** is a personal AI voice agent that gives you hands-free control of your Linux laptop over regular cellular phone calls. Call your agent number from anywhere to launch applications, switch browser accounts, inspect what's on your screen in real time, control audio and mute your microphone, manage Bluetooth devices, read your clipboard, check project git status, and receive proactive reminders.
 
 ---
 
-## 🧭 Architecture
+## 🧭 System Architecture
 
 ```
-                                  CELLULAR CALL
-                                        │
-                                        ▼
-                        ┌───────────────────────────────┐
-                        │   Sarvam AI Voice Platform    │
-                        │   (Speech-to-Text + LLM)      │
-                        └───────────────┬───────────────┘
-                                        │ HTTPS Webhook (POST /action)
-                                        ▼
-                        ┌───────────────────────────────┐
-                        │   Cloudflare Tunnel           │
-                        │   (Encrypted Public Ingress)  │
-                        └───────────────┬───────────────┘
-                                        │
-                                        ▼
-                        ┌───────────────────────────────┐
-                        │   Tri Local Server (:3710)    │
-                        │   ├── Bearer Auth Verification│
-                        │   ├── Caller ID Validation    │
-                        │   └── Action Allowlist Router │
-                        └───────────────┬───────────────┘
-                                        │
-                                        ▼
-                        ┌───────────────────────────────┐
-                        │    Linux Platform Layer       │
-                        │    (Wayland & X11 Aware)      │
-                        └───┬───┬───┬───┬───┬───┬───┬───┘
-                            │   │   │   │   │   │   │
-        ┌───────────────────┘   │   │   │   │   │   └────────────────────┐
-        ▼                       ▼   │   │   │   ▼                        ▼
- ┌──────────────┐ ┌───────────────┐ │   │ ┌──────────────┐    ┌──────────────────┐
- │.desktop Apps │ │PipeWire / ALSA│ │   │ │Bluetoothctl  │    │  Screen Capture  │
- │(VSCode, Brave│ │(Volume %, Mic │ │   │ │(Pair/Connect/│    │(Flameshot, Grim, │
- │ Spotify, etc)│ │ Mute / Audio) │ │   │ │ Disconnect)  │    │  X11 Scrot)      │
- └──────────────┘ └───────────────┘ │   │ └──────────────┘    └──────────────────┘
-                                    ▼   ▼
-                      ┌───────────────────────┐
-                      │System / Desktop Power │
-                      │(Wi-Fi nmcli, UPower,  │
-                      │Suspend, Lock screen)  │
-                      └───────────────────────┘
+                                      📞 CELLULAR PHONE CALL
+                                                │
+                                                ▼
+                                ┌───────────────────────────────┐
+                                │    Sarvam AI Indus Platform   │
+                                │   (Saaras STT + LLM + Bulbul) │
+                                └───────────────┬───────────────┘
+                                                │ Webhook (POST /action)
+                                                ▼
+                                ┌───────────────────────────────┐
+                                │     Cloudflare Ingress        │
+                                │   (Encrypted Public Tunnel)   │
+                                └───────────────┬───────────────┘
+                                                │
+                                                ▼
+                                ┌───────────────────────────────┐
+                                │    Tri Local Server (:3710)   │
+                                │   ├── Bearer Auth Verification│
+                                │   ├── Caller Identity Check   │
+                                │   └── 39-Action Router        │
+                                └───────┬───────────────┬───────┘
+                                        │               │
+                        ┌───────────────┘               └──────────────┐
+                        ▼                                              ▼
+        ┌───────────────────────────────┐              ┌───────────────────────────────┐
+        │     Playwright & Browser      │              │     Linux Platform Layer      │
+        │   ├── Brave Profile Switcher  │              │     (Wayland & X11 Aware)     │
+        │   │   (Personal/College/Work) │              └─┬─────┬─────┬─────┬─────┬─────┘
+        │   └── Webpage Text Reader     │                │     │     │     │     │
+        └───────────────────────────────┘                │     │     │     │     │
+                 ┌───────────────────────────────────────┘     │     │     │     └────────────────────────┐
+                 ▼                                             ▼     │     ▼                              ▼
+      ┌────────────────────┐                        ┌──────────────┐ │ ┌──────────────┐        ┌──────────────────────┐
+      │.desktop Discovery  │                        │ PipeWire ALSA│ │ │Bluetoothctl  │        │ Screen & Vision      │
+      │(300+ Linux Apps:   │                        │(Volume %, Mic│ │ │(Connect/Pair/│        │(Flameshot, Window    │
+      │ VS Code, Terminal) │                        │ Mute Toggle) │ │ │ Disconnect)  │        │ Inspector, Playerctl)│
+      └────────────────────┘                        └──────────────┘ │ └──────────────┘        └──────────────────────┘
+                                                                     ▼
+                                                      ┌───────────────────────────────┐
+                                                      │  Hardware & Telemetry         │
+                                                      │  (UPower, nmcli Wi-Fi, RAM,   │
+                                                      │   Disk, Suspend, Screen Lock) │
+                                                      └───────────────────────────────┘
 ```
 
 ---
 
-## ✨ Features
+## ✨ Features (v1.0.0 Linux Release)
 
-### 🚀 Desktop & App Discovery
-- **Zero-Config Dynamic App Discovery**: Automatically indexes all `.desktop` launchers in `/usr/share/applications` and `~/.local/share/applications` (300+ apps supported out-of-the-box: VS Code, Cursor, Chromium, Brave, Spotify, Terminal, CherryTree, etc.).
-- **Smart Alias Fallbacks**: Common aliases (`browser`, `terminal`, `editor`, `files`, `calc`) resolve intelligently to your preferred native Linux tools.
-- **Web & YouTube Launching**: Open specific URLs, run web searches, or stream music and videos directly in your default browser.
+### 🦁 1. Multi-Account Browser & Playwright Automation
+- **Brave Profile & Account Switcher (`open_brave_profile`)**: Automatically parses your local browser state (`~/.config/BraveSoftware/Brave-Browser/Local State`) and launches your exact profile (**Personal**, **College**, or **Work**) by voice.
+- **Playwright Webpage Reader (`read_webpage`)**: Drives headless Chromium/Brave to open web links, extract headings, and summarize the page content back to you over the call.
+- **Web & YouTube Integration (`open_website`, `play_youtube`, `web_search`)**: Opens target sites, searches Google, or streams music directly in your browser.
 
-### 🎧 Audio & Privacy Control
-- **Exact Volume Percentage**: Control master sink volume seamlessly via PipeWire (`wpctl`) or PulseAudio/ALSA with natural commands like *"set volume to 45%"*.
-- **Hardware Microphone Mute Toggle**: Instant privacy control over your default recording source via voice.
-- **Media Playback**: Play, pause, skip, and rewind active desktop audio players supporting MPRIS (`playerctl`) or simulated multimedia keys.
+### 👁️ 2. Real-Time Screen Vision & Media Awareness
+- **Desktop Vision (`inspect_screen`)**: Real-time awareness of what is currently on your display. Checks active media playback (`playerctl`), lists all open desktop applications (Brave, VS Code, Files, Terminal), and captures a live high-res screenshot to `~/Pictures/Tri/`.
+- **Media Control (`media_control`)**: Pause, play, skip tracks, and adjust master sink volume to an exact percentage (e.g. *"set volume to 45%"* via PipeWire WirePlumber `wpctl`).
+- **Hardware Mic Privacy (`mute_mic`)**: Voice-activated microphone mute toggle directly on your default audio recording source.
 
-### 📡 Telemetry & Hardware Control
-- **System Status**: Reports current time, date, power connection state, battery percentage, and active Wi-Fi SSID / network connection type (`nmcli`).
-- **Bluetooth Management**: Enumerate connected or paired Bluetooth devices, toggle Bluetooth radio power, and connect or disconnect devices (e.g. wireless earbuds, speakers).
-- **Safe Workstation Suspend & Lock**: Lock your desktop session (`loginctl`) or suspend your laptop with a safe verbal confirmation countdown.
+### 💼 3. Work Status & System Telemetry
+- **Git Work Update (`work_update`)**: Queries your active repository for current git branch, last commit message, uncommitted file changes, and pending tasks.
+- **System Resources (`system_resources`)**: Reports live RAM usage (used vs total) and free root filesystem disk space.
+- **Hardware Status (`system_status`)**: Reports time, date, power connection, battery percentage (`upower`), and active Wi-Fi network SSID (`nmcli`).
+- **Bluetooth Device Manager (`bluetooth_control`)**: Inspects Bluetooth status, lists paired devices (e.g. headphones, speakers), and connects or disconnects them.
+- **Safe Suspend & Lock (`suspend_laptop`, `lock_screen`)**: Locks your desktop session (`loginctl`) or puts your laptop to sleep with a safe verbal confirmation delay.
 
-### 📋 Smart Clipboard & Note Vault
-- **Voice Clipboard Reader**: Have Tri read aloud what is currently in your system clipboard.
-- **Multi-Snippet Clipboard Scratchpad**: Save snippets with timestamps to `~/Documents/Tri Clips.md` or directly to an Obsidian vault (`OBSIDIAN_VAULT`).
-- **Voice Notes**: Dictate quick thoughts and reminders saved chronologically to `~/Documents/Tri Notes.md`.
+### 📋 4. Smart Clipboard & Notes Vault
+- **Voice Clipboard Reader (`read_clipboard`)**: Reads aloud whatever snippet or URL is currently copied to your system clipboard.
+- **Multi-Clip Notebook (`save_clipboard`, `read_clips`, `show_clips`)**: Appends multiple copied or dictated snippets with timestamps into `~/Documents/Tri Clips.md`.
+- **Markdown Notes (`take_note`, `read_notes`, `show_notes`)**: Dictate thoughts and tasks into `~/Documents/Tri Notes.md`.
+- **Obsidian Vault Sync**: Configure `OBSIDIAN_VAULT=/path/to/vault` in `.env` to store all notes and clips directly in your personal Obsidian knowledge base.
 
-### ⏱️ Productivity & Notifications
-- **Desktop Notifications**: Send visual desktop popups via `notify-send` for reminders or phone call notes.
-- **Local Timers & Alarms**: Set timers with audible speech announcements over local laptop speakers (`spd-say` / `espeak-ng`).
-- **Focus Sessions**: Launches your focus music, opens your target document, and sets a structured study timer.
-- **Outbound Deadline Calls**: Scheduled deadline watcher (`tri/monitor.js`) triggers proactive outbound calls to your mobile phone before critical deadlines.
+### ⏱️ 5. Productivity & Outbound Deadline Calls
+- **Desktop Popups (`send_notification`)**: Triggers native Linux desktop notifications (`notify-send`).
+- **Audible Timers (`set_timer`)**: Sets local speech alarms that announce over laptop speakers (`spd-say` / `espeak-ng`).
+- **Focus Sessions (`focus_session`)**: Opens your study file, launches ambient focus music, and sets a structured timer.
+- **Proactive Outbound Calls (`monitor.js`)**: Background daemon dials your mobile phone through Sarvam's Outbound API before deadlines (24h, 3h, 1h, 15m) or when battery drops below 15% unplugged.
 
 ---
 
-## 🗣️ Voice Commands Cheat Sheet
+## 🗣️ Voice Commands Reference
 
-Here are examples of what you can say during a call:
-
-| Intent | Example Voice Command | Action Executed |
+| What You Can Say | Action Executed | What Tri Does |
 |---|---|---|
-| **Launch Apps** | *"Open VS Code"*, *"Open Brave browser"*, *"Open terminal"* | `open_app` (Dynamic `.desktop` indexer) |
-| **System Info** | *"What's my battery and Wi-Fi status?"* | `system_status` (Battery % + SSID) |
-| **Microphone** | *"Mute my microphone"*, *"Unmute mic"* | `mute_mic` (PipeWire toggle) |
-| **Exact Volume** | *"Set volume to 40 percent"*, *"Turn it up"* | `media_control` (`volume 40%`) |
-| **Media Playback** | *"Pause the music"*, *"Next track"* | `media_control` (`pause`, `next`) |
-| **Bluetooth** | *"Connect to my JBL speaker"*, *"Turn off bluetooth"* | `bluetooth_control` |
-| **Screenshots** | *"Take a screenshot of my screen"* | `take_screenshot` (Saved to `~/Pictures/Tri/`) |
-| **Clipboard** | *"What's on my clipboard?"* | `read_clipboard` |
-| **Save Clip** | *"Save this to my clips"* | `save_clipboard` (Saved to `Tri Clips.md`) |
-| **Take Notes** | *"Take a note: Buy milk on the way home"* | `take_note` (Saved to `Tri Notes.md`) |
-| **Read Notes** | *"What are my recent notes?"* | `read_notes` |
-| **Notification** | *"Send notification: Meeting in 10 minutes"* | `send_notification` (`notify-send`) |
-| **Timers** | *"Set a timer for 15 minutes"* | `set_timer` (Local TTS alarm) |
-| **Focus** | *"Start a 45 minute focus session for physics"* | `focus_session` (Music + timer) |
-| **Lock Screen** | *"Lock my laptop"* | `lock_screen` (`loginctl lock-session`) |
-| **Suspend** | *"Put my laptop to sleep"* | `suspend_laptop` (Safe 2s voice delay) |
+| *"Open my Personal account on Brave"* | `open_brave_profile` | Launches Brave with Profile 1 (Personal) |
+| *"Open College account on Brave"* | `open_brave_profile` | Launches Brave with Profile 2 (College) |
+| *"What is on my screen right now?"* | `inspect_screen` | Tells you active media + open windows + takes snapshot |
+| *"What is the update of my latest work?"* | `work_update` | Reports git branch, latest commit & pending work |
+| *"Check system resources"* | `system_resources` | Reports RAM usage and free disk space |
+| *"What's my battery and Wi-Fi status?"* | `system_status` | Reports battery % + active Wi-Fi SSID |
+| *"Set volume to 40 percent"* | `media_control` | Sets PipeWire master sink to 40% |
+| *"Mute my microphone"* | `mute_mic` | Toggles default audio source mute |
+| *"Play Arijit Singh on YouTube"* | `play_youtube` | Searches YouTube and starts video playback |
+| *"Connect to my JBL speaker"* | `bluetooth_control` | Connects paired Bluetooth device |
+| *"Take a screenshot"* | `take_screenshot` | Captures high-res display via Flameshot |
+| *"What is on my clipboard?"* | `read_clipboard` | Reads current system clipboard text |
+| *"Save this to my clips"* | `save_clipboard` | Appends snippet to `Tri Clips.md` |
+| *"Take a note: Prepare slides for tomorrow"* | `take_note` | Adds note to `Tri Notes.md` |
+| *"Open VS Code"* | `open_app` | Launches app via dynamic `.desktop` indexer |
+| *"Put my laptop to sleep"* | `suspend_laptop` | Verifies and suspends workstation |
 
 ---
 
 ## 🛠️ Prerequisites & Installation
 
-### 1. System Requirements
-- **OS**: Linux (tested on Kali Linux / Debian / Ubuntu with GNOME on Wayland or X11)
-- **Node.js**: v18.0.0 or higher (`node -v`)
-- **Cloudflared**: Cloudflare Tunnel binary installed ([Cloudflare Docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/))
+### 1. Requirements
+- **Linux Distribution**: Tested on Kali Linux / Debian / Ubuntu (GNOME on Wayland or X11)
+- **Node.js**: Version 18.0.0 or higher
+- **Cloudflare Tunnel (`cloudflared`)**: [Cloudflare Installation Guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/)
+- **Voice Agent Service**: [Sarvam AI Indus](https://indus.sarvam.ai/) account with an assigned phone number
 
-### 2. Recommended System Utilities
-Install the native CLI tools for full feature availability:
+### 2. System Packages
+Install the recommended CLI utilities for full hardware control:
 
 ```bash
 # Debian / Ubuntu / Kali
@@ -126,79 +130,82 @@ sudo apt update && sudo apt install -y \
   xdg-utils curl
 ```
 
-Verify your environment with our built-in dependency check:
+Run our built-in inspector to verify all tools on your system:
 ```bash
 ./scripts/check-deps.sh
 ```
 
 ---
 
-## 🚀 Quick Setup
+## 🚀 Getting Started (5 Minutes)
 
-### Step 1: Clone the Repository
+### Step 1: Clone Repository & Install Dependencies
 ```bash
 git clone https://github.com/eklavyamathur9/Tri.git
 cd Tri
-```
-
-### Step 2: Install Node Dependencies
-```bash
 cd tri && npm install && cd ..
 ```
 
-### Step 3: Run Setup & Start Tri
+### Step 2: Bootstrap Configuration
+Run setup with your phone number (including country code, e.g. `91` for India):
+```bash
+node tri/setup.js 919876543210
+```
+This sets `OWNER_NUMBER`, generates a cryptographically random Bearer token, and saves it in `tri/.env`.
+
+### Step 3: Start Tri
 ```bash
 ./scripts/start-tri.sh
 ```
+Keep this terminal open. It will:
+- Start the server on `http://localhost:3710`
+- Launch a live Cloudflare Tunnel (`trycloudflare.com`)
+- Automatically copy your unique webhook URL to your clipboard.
 
-On first run, the script will:
-1. Verify `node` and `cloudflared`.
-2. Prompt for your mobile number with country code (e.g. `919876543210`).
-3. Generate a cryptographically secure token and write `tri/.env`.
-4. Spin up the local HTTP server on `localhost:3710`.
-5. Establish a live Cloudflare Tunnel (`trycloudflare.com`) and automatically copy your webhook URL to the clipboard.
+Visit [`http://localhost:3710`](http://localhost:3710) in your browser to view the real-time activity console.
 
 ---
 
-## 🎙️ Configure Your Voice Agent (Sarvam AI)
+## 🎙️ Sarvam AI Agent Setup
 
-Use the automated helper script:
+Use our interactive helper in a separate terminal:
 ```bash
 ./scripts/copy-for-sarvam.sh
 ```
 
-Or configure manually in [Sarvam AI Indus](https://indus.sarvam.ai/):
+In your [Sarvam Indus Portal](https://indus.sarvam.ai/):
+1. **Create Agent**: Click **Create from scratch** $\rightarrow$ Name: `TriAgent`.
+2. **Instructions**: Press `1` in the helper $\rightarrow$ Paste into Sarvam **Instructions**.
+3. **Greeting**: Add variable `opening_line` (Press `2` in helper to copy greeting) $\rightarrow$ Set Greeting to `{{opening_line}}`.
+4. **Tool Setup**: Click **Add Tool** $\rightarrow$ **API / HTTP Tool**:
+   - **Tool Name**: `laptop_action`
+   - **Description**: Press `3` in helper $\rightarrow$ Paste description.
+   - **Method**: `POST`
+   - **URL**: Press `4` in helper $\rightarrow$ Paste your active tunnel URL (`https://...trycloudflare.com/action`).
+   - **Authentication**: `Bearer Token` $\rightarrow$ Press `5` in helper $\rightarrow$ Paste your token secret.
+   - **Parameters**:
+     - `action` (string, filled by agent)
+     - `input` (string, filled by agent)
+     - `caller` (User Identifier)
+   - **Timeout**: `10` seconds
+5. **Deploy**: Click **Commit & Deploy** to your Sarvam phone number.
 
-| Setting | Value |
-|---|---|
-| **Agent Name** | `Tri` |
-| **Instructions** | Copy from `prompts/tri-instructions.txt` |
-| **Greeting Variable** | Add variable `opening_line` = `Hey Boss, it's Tri. What can I do for you?` |
-| **Greeting Text** | `{{opening_line}}` |
-| **Tool Name** | `laptop_action` |
-| **Tool Type** | HTTP / API POST |
-| **Tool URL** | URL from `tri/tunnel-url.txt` (or clipboard) + `/action` |
-| **Auth Type** | Bearer Token (paste `TRI_TOKEN` from `tri/.env`) |
-| **Parameters** | `action` (string), `input` (string), `caller` (User Identifier) |
-| **Max Wait** | 10 seconds |
-
-### Lock to Your Phone Number
-Once your initial test call succeeds, enforce caller verification:
+### Lock Down Security
+After your first successful test call, enforce strict caller verification:
 ```bash
 ./scripts/copy-for-sarvam.sh 6
-# Or set ALLOW_NO_CALLER=false in tri/.env
 ```
-Tri will now reject calls originating from any phone number other than your registered owner number.
+Tri will now verify caller ID on every webhook and refuse any request originating from an unknown phone number.
 
 ---
 
 ## 🔒 Security Architecture
 
-- **Zero Arbitrary Execution**: Unlike naive agent platforms, Tri does **not** evaluate raw bash or shell strings received from LLMs. Every action maps to a strictly audited handler in `tri/server.js`.
-- **Bearer Token Authentication**: All requests require an `Authorization: Bearer <token>` header matching `TRI_TOKEN`.
-- **Caller Identity Verification**: Phone calls pass the telco caller ID into the webhook payload. Tri validates the caller against `OWNER_NUMBER`.
-- **Audible Warning Delays**: Power actions like system sleep or suspend speak a countdown aloud on the laptop speakers before executing.
-- **Local Markdown Storage**: Notes and clipboard history are kept locally in plain Markdown (`~/Documents/`) or inside your private Obsidian vault.
+- **Strict Action Allowlist**: Tri only executes 39 predefined, audited functions. It **never** evaluates arbitrary shell strings received over webhooks.
+- **Bearer Token Verification**: Inbound HTTP requests require a constant-time validated `Authorization: Bearer <token>` matching `TRI_TOKEN`.
+- **Caller Identity Verification**: Matches incoming caller ID against `OWNER_NUMBER` and authorized owner names.
+- **Encrypted Ingress**: Uses Cloudflare's TLS encrypted edge tunnel, eliminating the need to expose open router ports.
+- **Local Markdown Vault**: Notes, clips, and screenshots remain strictly on your local disk.
 
 ---
 
@@ -206,45 +213,31 @@ Tri will now reject calls originating from any phone number other than your regi
 
 ```
 Tri/
-├── tri/                         # Core server & logic
-│   ├── server.js                # HTTP server & 34 action handlers
+├── tri/                         # Core server application
+│   ├── server.js                # HTTP server & 39 action handlers
+│   ├── browser.js               # Playwright automation & Brave profile manager
 │   ├── start.js                 # Server & Cloudflare tunnel manager
-│   ├── setup.js                 # Environment & token bootstrap
+│   ├── setup.js                 # Interactive configuration bootstrap
 │   ├── files.js                 # Local file indexing & fuzzy search
 │   ├── monitor.js               # Deadline reminders & outbound calls
 │   ├── classroom.js             # Google Classroom automation
-│   ├── live.html                # Real-time dashboard (localhost:3710)
+│   ├── live.html                # Real-time web console (localhost:3710)
 │   └── platform/
-│       ├── index.js             # OS detection bridge
+│       ├── index.js             # OS platform detection bridge
 │       ├── linux.js             # Wayland/X11 Linux platform layer
 │       └── windows.js           # Windows reference implementation
 ├── prompts/
-│   ├── tri-instructions.txt     # System prompt for voice LLM
+│   ├── tri-instructions.txt     # System prompt for voice agent
 │   └── tri-tool-description.txt # Schema description for laptop_action tool
 ├── scripts/
 │   ├── start-tri.sh             # One-step startup script
 │   ├── copy-for-sarvam.sh       # Clipboard config helper
 │   └── check-deps.sh            # Linux dependency inspector
-├── docs/                        # Additional architecture guides
-├── LINUX_CONVERSION_PLAN.md     # Detailed migration & implementation plan
-├── SETUP_GUIDE_LINUX.md         # Linux installation walkthrough
+├── docs/                        # Architecture guides
+├── LINUX_CONVERSION_PLAN.md     # Engineering plan & benchmark report
+├── SETUP_GUIDE_LINUX.md         # Linux setup walkthrough
 └── README.md                    # Project documentation
 ```
-
----
-
-## 🤝 Contributing & Extension
-
-To add new custom actions to Tri:
-1. Open [`tri/server.js`](tri/server.js) and locate the `ACTIONS` dictionary.
-2. Add your action handler:
-   ```javascript
-   my_custom_action: async (input) => {
-     // Implement action using platform abstraction
-     return "Done!";
-   }
-   ```
-3. Update `prompts/tri-tool-description.txt` with the action name and description so the voice LLM knows when to invoke it.
 
 ---
 

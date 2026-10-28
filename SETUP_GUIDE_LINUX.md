@@ -152,10 +152,11 @@ Phone Call → Sarvam Voice Agent → Cloudflare Tunnel → Tri Server (localhos
 
 | File | Purpose |
 |------|---------|
-| `tri/server.js` | Main server with all action handlers |
-| `tri/platform/linux.js` | Linux-specific implementations |
-| `tri/start.js` | Starts server + tunnel |
-| `tri/setup.js` | First-time setup |
+| `tri/server.js` | Main server with all 39 action handlers |
+| `tri/browser.js` | Playwright web automation & Brave profile manager |
+| `tri/platform/linux.js` | Linux-specific implementations (Wayland & X11) |
+| `tri/start.js` | Starts server + tunnel with auto-reload |
+| `tri/setup.js` | First-time setup & token configuration |
 | `scripts/start-tri.sh` | Easy start script |
 | `scripts/copy-for-sarvam.sh` | Copy config values for voice agent |
 | `scripts/check-deps.sh` | Check dependencies |

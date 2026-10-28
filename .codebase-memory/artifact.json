@@ -1,12 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "db4bdeddd63d02d92a05f9a34dc13881c13cb1a3",
-    "indexed_at": "2026-10-27T19:44:54Z",
+    "commit": "1afdfb2d23175327debbbb83b70f1805e37f2208",
+    "indexed_at": "2026-10-28T11:07:17Z",
     "project": "home-eklavyamathur9-Projects-Tri",
-    "nodes": 629,
-    "edges": 1431,
-    "original_size": 4521984,
-    "compressed_size": 643181,
-    "compression_level": 3,
-    "reconcile_basis": "git-clean-head"
+    "nodes": 661,
+    "edges": 1521,
+    "original_size": 4587520,
+    "compressed_size": 696542,
+    "compression_level": 3
 }
