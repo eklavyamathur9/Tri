@@ -13,4 +13,6 @@ classroom-state.json
 tri/classroom-state.json
 tunnel-url.txt
 tri/tunnel-url.txt
+*.log
+tri/*.log
 .DS_Store

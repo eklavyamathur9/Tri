@@ -47,6 +47,35 @@ const CLIPS = path.join(VAULT, 'Tri Clips.md');
 const activity = [];
 const recent = new Map();
 const DEDUPE_MS = 10_000;
+
+// ---------- security audit logging & rate limiting ----------
+const SECURITY_LOG = path.join(ROOT, 'security.log');
+function logSecurityEvent(type, detail) {
+  const line = `[${new Date().toISOString()}] [${type}] ${detail}\n`;
+  try {
+    fs.appendFileSync(SECURITY_LOG, line);
+  } catch {}
+}
+
+const rateLimits = new Map();
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const maxRequests = 40;
+  let record = rateLimits.get(ip);
+  if (!record || now - record.start > windowMs) {
+    record = { start: now, count: 1 };
+    rateLimits.set(ip, record);
+    return true;
+  }
+  record.count++;
+  if (record.count > maxRequests) {
+    logSecurityEvent('RATE_LIMIT_EXCEEDED', `IP=${ip} count=${record.count}`);
+    return false;
+  }
+  return true;
+}
+
 function record(entry) {
   activity.unshift({ at: new Date().toLocaleTimeString('en-IN'), ...entry });
   activity.length = Math.min(activity.length, 50);
@@ -709,11 +738,20 @@ const ALIASES = {
 function authorise(req, body) {
   const auth = req.headers.authorization || '';
   const given = auth.replace(/^Bearer\s+/i, '') || req.headers['x-tri-token'] || body.token || '';
-  if (!TOKEN || given.length !== TOKEN.length || !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(TOKEN))) return 'bad token';
+
+  // Constant-time SHA-256 digest comparison: eliminates any token length leakage
+  const givenHash = crypto.createHash('sha256').update(String(given || '')).digest();
+  const tokenHash = crypto.createHash('sha256').update(String(TOKEN || '')).digest();
+  if (!TOKEN || !crypto.timingSafeEqual(givenHash, tokenHash)) {
+    const ip = req.headers['cf-connecting-ip'] || req.socket.remoteAddress || 'local';
+    logSecurityEvent('AUTH_FAILURE', `Invalid token from IP=${ip}`);
+    return 'bad token';
+  }
+
   const raw = String(req.headers['x-caller'] || body.caller || body.user_identifier || '').trim();
   lastCaller = raw;
   if (ALLOW_NO_CALLER) return null;
-  if (!OWNER && !OWNER_CALLER_ID && !OWNER_NAME) return null;
+  if (!OWNER && !OWNER_CALLER_ID && !OWNER_NAMES.size) return null;
   if (!raw) return 'no caller number';
 
   if (OWNER_NAMES.has(raw.toLowerCase()) || Array.from(OWNER_NAMES).some(n => raw.toLowerCase().includes(n))) return null;
@@ -721,6 +759,9 @@ function authorise(req, body) {
   if (/^[0-9a-f]{32,}$/i.test(raw)) return OWNER_HASHES.has(raw.toLowerCase()) ? null : `caller ${raw.slice(0, 6)}… is not the owner`;
   const digits = raw.replace(/\D/g, '');
   if (OWNER && digits.length >= 10 && digits.slice(-10) === OWNER.slice(-10)) return null;
+
+  const ip = req.headers['cf-connecting-ip'] || req.socket.remoteAddress || 'local';
+  logSecurityEvent('CALLER_REFUSED', `Caller "${raw}" rejected from IP=${ip}`);
   return `caller …${digits.slice(-2) || raw.slice(-2)} is not the owner`;
 }
 
@@ -733,6 +774,10 @@ http.createServer(async (req, res) => {
   // Anything arriving through the Cloudflare tunnel carries cf-connecting-ip. The console and
   // activity feed are for this laptop's screen only; the tunnel exposes just /action and /tools.
   const viaTunnel = Boolean(req.headers['cf-connecting-ip']);
+  const clientIp = req.headers['cf-connecting-ip'] || req.socket.remoteAddress || '127.0.0.1';
+  if (viaTunnel && !checkRateLimit(clientIp)) {
+    return json(res, 429, { result: 'Rate limit exceeded. Please wait a moment.' });
+  }
   if (viaTunnel && req.method === 'GET') return json(res, 404, { result: 'Not found' });
   if (req.method === 'GET' && url.pathname === '/status') {
     return json(res, 200, { owner: OWNER ? `…${OWNER.slice(-2)}` : null, lock: Boolean(OWNER || OWNER_CALLER_ID), lastCaller, allowNoCaller: ALLOW_NO_CALLER, actions: Object.keys(ACTIONS), phone: process.env.TRI_PHONE || '' });
@@ -759,7 +804,13 @@ http.createServer(async (req, res) => {
   let body = {};
   if (req.method !== 'GET') {
     let raw = '';
-    for await (const c of req) { raw += c; if (raw.length > 20000) break; }
+    for await (const c of req) {
+      raw += c;
+      if (raw.length > 20000) {
+        logSecurityEvent('PAYLOAD_TOO_LARGE', `IP=${clientIp} length exceeded 20KB`);
+        return json(res, 413, { result: 'Payload too large.' });
+      }
+    }
     try { body = raw ? JSON.parse(raw) : {}; } catch { body = { input: raw }; }
   }
   for (const [k, v] of url.searchParams) if (body[k] === undefined) body[k] = v;
